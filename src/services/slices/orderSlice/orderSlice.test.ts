@@ -1,39 +1,67 @@
-import orderSlice, { initialState, getOrderByNumber } from './orderSlice';
+import orderSlice, { initialState, getOrderByNumber, TOrderState } from './orderSlice';
 
 describe('тестирование редьюсера orderSlice', () => {
-  describe('тестирование асинхронного POST экшена getOrderByNumber', () => {
-    const actions = {
-      pending: {
-        type: getOrderByNumber.pending.type,
-        payload: null
-      },
-      rejected: {
-        type: getOrderByNumber.rejected.type,
-        error: { message: 'Funny mock-error' }
-      },
-      fulfilled: {
-        type: getOrderByNumber.fulfilled.type,
-        payload: { orders: ['someOrder'] }
-      }
-    };
+  const mockOrder = {
+    _id: '1',
+    status: 'done',
+    name: 'Test Order',
+    createdAt: '2024-01-01',
+    updatedAt: '2024-01-01',
+    number: 1234,
+    ingredients: ['ing1', 'ing2']
+  };
 
-    test('тест синхронного экшена getOrderByNumber.pending', () => {
-      const nextState = orderSlice(initialState, actions.pending);
-      expect(nextState.request).toBe(true);
-      expect(nextState.error).toBe(actions.pending.payload);
-    });
-    test('тест синхронного экшена getOrderByNumber.rejected', () => {
-      const nextState = orderSlice(initialState, actions.rejected);
-      expect(nextState.request).toBe(false);
-      expect(nextState.error).toBe(actions.rejected.error.message);
-    });
-    test('тест синхронного экшена getOrderByNumber.fulfilled', () => {
-      const nextState = orderSlice(initialState, actions.fulfilled);
-      expect(nextState.request).toBe(false);
-      expect(nextState.error).toBe(null);
-      expect(nextState.orderByNumberResponse).toBe(
-        actions.fulfilled.payload.orders[0]
-      );
+  const mockActions = {
+    pending: {
+      type: getOrderByNumber.pending.type,
+      payload: null
+    },
+    rejected: {
+      type: getOrderByNumber.rejected.type,
+      error: { message: 'Funny mock-error' }
+    },
+    fulfilled: {
+      type: getOrderByNumber.fulfilled.type,
+      payload: { orders: [mockOrder] }
+    }
+  };
+
+  const testCases = [
+    {
+      name: 'pending',
+      action: mockActions.pending,
+      expectedState: {
+        request: true,
+        error: null
+      } as Partial<TOrderState>
+    },
+    {
+      name: 'rejected', 
+      action: mockActions.rejected,
+      expectedState: {
+        request: false,
+        error: 'Funny mock-error'
+      } as Partial<TOrderState>
+    },
+    {
+      name: 'fulfilled',
+      action: mockActions.fulfilled,
+      expectedState: {
+        request: false,
+        error: null,
+        orderByNumberResponse: mockOrder
+      } as Partial<TOrderState>
+    }
+  ];
+
+  describe('тестирование асинхронного POST экшена getOrderByNumber', () => {
+    testCases.forEach(({ name, action, expectedState }) => {
+      test(`тест синхронного экшена getOrderByNumber.${name}`, () => {
+        const nextState = orderSlice(initialState, action);
+        (Object.keys(expectedState) as Array<keyof TOrderState>).forEach((key) => {
+          expect(nextState[key]).toBe(expectedState[key]);
+        });
+      });
     });
   });
 });

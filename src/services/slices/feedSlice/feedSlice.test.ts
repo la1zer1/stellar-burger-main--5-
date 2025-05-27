@@ -1,38 +1,75 @@
-import feedSlice, { getFeeds, initialState } from './feedSlice';
+import feedSlice, { getFeeds, initialState, TFeedState } from './feedSlice';
 
 describe('тестирование редьюсера feedSlice', () => {
-  describe('тестирование асинхронного GET экшена getFeeds', () => {
-    const actions = {
-      pending: {
-        type: getFeeds.pending.type,
-        payload: null
-      },
-      rejected: {
-        type: getFeeds.rejected.type,
-        error: { message: 'Funny mock-error' }
-      },
-      fulfilled: {
-        type: getFeeds.fulfilled.type,
-        payload: { orders: ['order1', 'order2'] }
-      }
-    };
+  const mockOrders = [
+    {
+      _id: '1',
+      status: 'done',
+      name: 'Order 1',
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      number: 1,
+      ingredients: ['ing1', 'ing2']
+    },
+    {
+      _id: '2',
+      status: 'done',
+      name: 'Order 2',
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      number: 2,
+      ingredients: ['ing3', 'ing4']
+    }
+  ];
 
-    test('тест синхронного экшена getFeeds.pending', () => {
-      const state = feedSlice(initialState, actions.pending);
-      expect(state.loading).toBe(true);
-      expect(state.error).toBe(actions.pending.payload);
-    });
+  const mockActions = {
+    pending: {
+      type: getFeeds.pending.type,
+      payload: null
+    },
+    rejected: {
+      type: getFeeds.rejected.type,
+      error: { message: 'Funny mock-error' }
+    },
+    fulfilled: {
+      type: getFeeds.fulfilled.type,
+      payload: { orders: mockOrders }
+    }
+  };
 
-    test('тест синхронного экшена getFeeds.rejected', () => {
-      const state = feedSlice(initialState, actions.rejected);
-      expect(state.loading).toBe(false);
-      expect(state.error).toBe(actions.rejected.error.message);
-    });
+  const testCases = [
+    {
+      name: 'pending',
+      action: mockActions.pending,
+      expectedState: {
+        loading: true,
+        error: null
+      } as Partial<TFeedState>
+    },
+    {
+      name: 'rejected',
+      action: mockActions.rejected,
+      expectedState: {
+        loading: false,
+        error: 'Funny mock-error'
+      } as Partial<TFeedState>
+    },
+    {
+      name: 'fulfilled',
+      action: mockActions.fulfilled,
+      expectedState: {
+        loading: false,
+        orders: mockOrders
+      } as Partial<TFeedState>
+    }
+  ];
 
-    test('тест синхронного экшена getFeeds.fulfilled', () => {
-      const nextState = feedSlice(initialState, actions.fulfilled);
-      expect(nextState.loading).toBe(false);
-      expect(nextState.orders).toEqual(actions.fulfilled.payload.orders);
+  testCases.forEach(({ name, action, expectedState }) => {
+    test(`тест синхронного экшена getFeeds.${name}`, () => {
+      const state = feedSlice(initialState, action);
+      (Object.keys(expectedState) as Array<keyof TFeedState>).forEach((key) => {
+        expect(state[key]).toEqual(expectedState[key]);
+      });
     });
   });
 });

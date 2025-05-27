@@ -1,106 +1,124 @@
 import Cypress from 'cypress';
 
+// Constants
+const TEST_CONFIG = {
+  baseUrl: 'https://norma.nomoreparties.space/api',
+  viewport: { width: 1440, height: 800 },
+  selectors: {
+    bun: '643d69a5c3f7b9001cfa093c',
+    anotherBun: '643d69a5c3f7b9001cfa093d',
+    filling: '643d69a5c3f7b9001cfa0941',
+    orderButton: '[data-cy="order-button"]',
+    modal: '#modals',
+    overlay: '[data-cy="overlay"]'
+  }
+};
 
-const BASE_URL = 'https://norma.nomoreparties.space/api';
-const ID_BUN = `[data-cy=${'643d69a5c3f7b9001cfa093c'}]`;
-const ID_ANOTHER_BUN = `[data-cy=${'643d69a5c3f7b9001cfa093d'}]`;
-const ID_FILLING = `[data-cy=${'643d69a5c3f7b9001cfa0941'}]`;
+// Helper functions
+const getIngredientSelector = (id: string) => `[data-cy=${id}]`;
 
+const setupApiMocks = () => {
+  cy.intercept('GET', `${TEST_CONFIG.baseUrl}/ingredients`, { fixture: 'ingredients.json' });
+  cy.intercept('POST', `${TEST_CONFIG.baseUrl}/auth/login`, { fixture: 'user.json' });
+  cy.intercept('GET', `${TEST_CONFIG.baseUrl}/auth/user`, { fixture: 'user.json' });
+  cy.intercept('POST', `${TEST_CONFIG.baseUrl}/orders`, { fixture: 'orderResponse.json' });
+};
+
+const setupAuthState = () => {
+  window.localStorage.setItem('refreshToken', 'ipsum');
+  cy.setCookie('accessToken', 'lorem');
+  cy.getAllLocalStorage().should('be.not.empty');
+  cy.getCookie('accessToken').should('be.not.empty');
+};
+
+const clearAuthState = () => {
+  window.localStorage.clear();
+  cy.clearAllCookies();
+  cy.getAllLocalStorage().should('be.empty');
+  cy.getAllCookies().should('be.empty');
+};
+
+// Common setup
 beforeEach(() => {
-  cy.intercept('GET', `${BASE_URL}/ingredients`, {
-    fixture: 'ingredients.json'
-  });
-  cy.intercept('POST', `${BASE_URL}/auth/login`, {
-    fixture: 'user.json'
-  });
-  cy.intercept('GET', `${BASE_URL}/auth/user`, {
-    fixture: 'user.json'
-  });
-  cy.intercept('POST', `${BASE_URL}/orders`, {
-    fixture: 'orderResponse.json'
-  });
+  setupApiMocks();
   cy.visit('/');
-  cy.viewport(1440, 800);
-  cy.get('#modals').as('modal');
+  cy.viewport(TEST_CONFIG.viewport.width, TEST_CONFIG.viewport.height);
+  cy.get(TEST_CONFIG.selectors.modal).as('modal');
 });
 
-describe('добавление ингредиента в список заказа', () => {
-  it('инкремент счетчика ингредиента', () => {
-    cy.get(ID_FILLING).children('button').click();
-    cy.get(ID_FILLING).find('.counter__num').contains('1');
-  });
-  describe('добавление булок и начинок', () => {
-    it('добавление булки и начинки в список заказа', () => {
-      cy.get(ID_BUN).children('button').click();
-      cy.get(ID_FILLING).children('button').click();
+describe('Конструктор бургера', () => {
+  describe('Работа с ингредиентами', () => {
+    it('должен увеличивать счетчик при добавлении ингредиента', () => {
+      cy.get(getIngredientSelector(TEST_CONFIG.selectors.filling)).children('button').click();
+      cy.get(getIngredientSelector(TEST_CONFIG.selectors.filling)).find('.counter__num').contains('1');
     });
-    it('добавление булки после добавления начинок', () => {
-      cy.get(ID_FILLING).children('button').click();
-      cy.get(ID_BUN).children('button').click();
-    });
-  });
-  describe('замена булок', () => {
-    it('замена булки другой булкой при пустом списке начинок', () => {
-      cy.get(ID_BUN).children('button').click();
-      cy.get(ID_ANOTHER_BUN).children('button').click();
-    });
-    it('замена булки другой булкой при полном списке начинок ', () => {
-      cy.get(ID_BUN).children('button').click();
-      cy.get(ID_FILLING).children('button').click();
-      cy.get(ID_ANOTHER_BUN).children('button').click();
-    });
-  });
-});
 
-describe('оформление заказа', () => {
-  beforeEach(() => {
-    window.localStorage.setItem('refreshToken', 'ipsum');
-    cy.setCookie('accessToken', 'lorem');
-    cy.getAllLocalStorage().should('be.not.empty');
-    cy.getCookie('accessToken').should('be.not.empty');
-  });
-  afterEach(() => {
-    window.localStorage.clear();
-    cy.clearAllCookies();
-    cy.getAllLocalStorage().should('be.empty');
-    cy.getAllCookies().should('be.empty');
+    describe('Добавление компонентов', () => {
+      it('должен добавлять булку и начинку в указанном порядке', () => {
+        cy.get(getIngredientSelector(TEST_CONFIG.selectors.bun)).children('button').click();
+        cy.get(getIngredientSelector(TEST_CONFIG.selectors.filling)).children('button').click();
+      });
+
+      it('должен добавлять булку после добавления начинки', () => {
+        cy.get(getIngredientSelector(TEST_CONFIG.selectors.filling)).children('button').click();
+        cy.get(getIngredientSelector(TEST_CONFIG.selectors.bun)).children('button').click();
+      });
+    });
+
+    describe('Замена булок', () => {
+      it('должен заменять булку при пустом списке начинок', () => {
+        cy.get(getIngredientSelector(TEST_CONFIG.selectors.bun)).children('button').click();
+        cy.get(getIngredientSelector(TEST_CONFIG.selectors.anotherBun)).children('button').click();
+      });
+
+      it('должен заменять булку при наличии начинок', () => {
+        cy.get(getIngredientSelector(TEST_CONFIG.selectors.bun)).children('button').click();
+        cy.get(getIngredientSelector(TEST_CONFIG.selectors.filling)).children('button').click();
+        cy.get(getIngredientSelector(TEST_CONFIG.selectors.anotherBun)).children('button').click();
+      });
+    });
   });
 
+  describe('Оформление заказа', () => {
+    beforeEach(setupAuthState);
+    afterEach(clearAuthState);
 
-  it('отправка заказа c проверкой корректности ответа', () => {
-    cy.get(ID_BUN).children('button').click();
-    cy.get(ID_FILLING).children('button').click();
-    cy.get(`[data-cy='order-button']`).click();
-    cy.get('@modal').find('h2').contains('38483');
+    it('должен успешно оформлять заказ и показывать номер', () => {
+      cy.get(getIngredientSelector(TEST_CONFIG.selectors.bun)).children('button').click();
+      cy.get(getIngredientSelector(TEST_CONFIG.selectors.filling)).children('button').click();
+      cy.get(TEST_CONFIG.selectors.orderButton).click();
+      cy.get('@modal').find('h2').contains('38483');
+    });
   });
-});
 
-describe('модельные окна', () => {
-  it('открытие и проверка отображения данных модального окна ингредиента', () => {
-    cy.get('@modal').should('be.empty');
-    cy.get(ID_FILLING).children('a').click();
-    cy.get('@modal').should('be.not.empty');
-    cy.url().should('include', '643d69a5c3f7b9001cfa0941');
-  });
-  it('закрытие модального окна ингредиента по клику на ‭«✕»', () => {
-    cy.get('@modal').should('be.empty');
-    cy.get(ID_FILLING).children('a').click();
-    cy.get('@modal').should('be.not.empty');
-    cy.get('@modal').find('button').click();
-    cy.get('@modal').should('be.empty');
-  });
-  it('закрытие модального окна ингредиента по клику на ‭оверлей', () => {
-    cy.get('@modal').should('be.empty');
-    cy.get(ID_FILLING).children('a').click();
-    cy.get('@modal').should('be.not.empty');
-    cy.get(`[data-cy='overlay']`).click({ force: true });
-    cy.get('@modal').should('be.empty');
-  });
-  it('закрытие модального окна ингредиента по нажатию на «Escape»', () => {
-    cy.get('@modal').should('be.empty');
-    cy.get(ID_FILLING).children('a').click();
-    cy.get('@modal').should('be.not.empty');
-    cy.get('body').trigger('keydown', { key: 'Escape' });
-    cy.get('@modal').should('be.empty');
+  describe('Модальные окна', () => {
+    const openIngredientModal = () => {
+      cy.get('@modal').should('be.empty');
+      cy.get(getIngredientSelector(TEST_CONFIG.selectors.filling)).children('a').click();
+      cy.get('@modal').should('be.not.empty');
+    };
+
+    it('должен открывать модальное окно с информацией об ингредиенте', () => {
+      openIngredientModal();
+      cy.url().should('include', TEST_CONFIG.selectors.filling);
+    });
+
+    it('должен закрывать модальное окно при клике на крестик', () => {
+      openIngredientModal();
+      cy.get('@modal').find('button').click();
+      cy.get('@modal').should('be.empty');
+    });
+
+    it('должен закрывать модальное окно при клике на оверлей', () => {
+      openIngredientModal();
+      cy.get(TEST_CONFIG.selectors.overlay).click({ force: true });
+      cy.get('@modal').should('be.empty');
+    });
+
+    it('должен закрывать модальное окно при нажатии Escape', () => {
+      openIngredientModal();
+      cy.get('body').trigger('keydown', { key: 'Escape' });
+      cy.get('@modal').should('be.empty');
+    });
   });
 });

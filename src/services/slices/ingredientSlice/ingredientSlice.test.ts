@@ -1,41 +1,83 @@
 import ingredientSlice, {
   getIngredients,
-  initialState
+  initialState,
+  TIngredientState
 } from './ingredientSlice';
 
 describe('тестирование редьюсера ingredientSlice', () => {
-  describe('тестирование асинхронного GET экшена getIngredients', () => {
-    const actions = {
-      pending: {
+  const mockIngredients = [
+    {
+      _id: '1',
+      name: 'Ingredient 1',
+      type: 'main',
+      proteins: 80,
+      fat: 24,
+      carbohydrates: 53,
+      calories: 420,
+      price: 1255,
+      image: 'https://example.com/image1.png',
+      image_mobile: 'https://example.com/image1-mobile.png',
+      image_large: 'https://example.com/image1-large.png'
+    },
+    {
+      _id: '2',
+      name: 'Ingredient 2',
+      type: 'sauce',
+      proteins: 30,
+      fat: 20,
+      carbohydrates: 40,
+      calories: 200,
+      price: 500,
+      image: 'https://example.com/image2.png',
+      image_mobile: 'https://example.com/image2-mobile.png',
+      image_large: 'https://example.com/image2-large.png'
+    }
+  ];
+
+  describe('тестирование асинхронных экшенов', () => {
+    test('должен обработать pending состояние', () => {
+      const action = {
         type: getIngredients.pending.type,
         payload: null
-      },
-      rejected: {
+      };
+      const expectedState = {
+        loading: true,
+        error: null
+      } as Partial<TIngredientState>;
+      const state = ingredientSlice(initialState, action);
+      (Object.keys(expectedState) as Array<keyof TIngredientState>).forEach((key) => {
+        expect(state[key]).toEqual(expectedState[key]);
+      });
+    });
+
+    test('должен обработать rejected состояние', () => {
+      const action = {
         type: getIngredients.rejected.type,
         error: { message: 'Funny mock-error' }
-      },
-      fulfilled: {
+      };
+      const expectedState = {
+        loading: false,
+        error: 'Funny mock-error'
+      } as Partial<TIngredientState>;
+      const state = ingredientSlice(initialState, action);
+      (Object.keys(expectedState) as Array<keyof TIngredientState>).forEach((key) => {
+        expect(state[key]).toEqual(expectedState[key]);
+      });
+    });
+
+    test('должен обработать fulfilled состояние', () => {
+      const action = {
         type: getIngredients.fulfilled.type,
-        payload: ['ingr1', 'ingr2']
-      }
-    };
-
-    test('тест синхронного экшена getIngredients.pending', () => {
-      const state = ingredientSlice(initialState, actions.pending);
-      expect(state.loading).toBe(true);
-      expect(state.error).toBe(actions.pending.payload);
-    });
-
-    test('тест синхронного экшена getIngredients.rejected', () => {
-      const state = ingredientSlice(initialState, actions.rejected);
-      expect(state.loading).toBe(false);
-      expect(state.error).toBe(actions.rejected.error.message);
-    });
-
-    test('тест синхронного экшена getIngredients.fulfilled', () => {
-      const nextState = ingredientSlice(initialState, actions.fulfilled);
-      expect(nextState.loading).toBe(false);
-      expect(nextState.ingredients).toEqual(actions.fulfilled.payload);
+        payload: mockIngredients
+      };
+      const expectedState = {
+        loading: false,
+        ingredients: mockIngredients
+      } as Partial<TIngredientState>;
+      const state = ingredientSlice(initialState, action);
+      (Object.keys(expectedState) as Array<keyof TIngredientState>).forEach((key) => {
+        expect(state[key]).toEqual(expectedState[key]);
+      });
     });
   });
 });
